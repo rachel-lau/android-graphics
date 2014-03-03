@@ -22,6 +22,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.RelativeLayout;
 
 public class BubbleActivity extends Activity {
@@ -134,10 +135,13 @@ public class BubbleActivity extends Activity {
 				// TODO - Implement onFling actions.
 				// You can get all Views in mFrame using the
 				// ViewGroup.getChildCount() method
-				
-				
-				
-				
+				for (int i = 0; i < mFrame.getChildCount(); i++) {
+					BubbleView bubbleView = (BubbleView) mFrame.getChildAt(i);
+					if (bubbleView.intersects(event1.getX(), event1.getY())) {
+						bubbleView.deflect(velocityX, velocityY);
+						return true;
+					}
+				}
 				return false;
 				
 			}
@@ -152,8 +156,16 @@ public class BubbleActivity extends Activity {
 				// TODO - Implement onSingleTapConfirmed actions.
 				// You can get all Views in mFrame using the
 				// ViewGroup.getChildCount() method
-				int pointerIndex = event.getActionIndex();
-				BubbleView bubbleView = new BubbleView(mFrame.getContext(), event.getX(pointerIndex), event.getY(pointerIndex));
+				for (int i = 0; i < mFrame.getChildCount(); i++) {
+					BubbleView bubbleView = (BubbleView) mFrame.getChildAt(i);
+					if (bubbleView.intersects(event.getX(), event.getY())) {
+						bubbleView.stop(true);
+						return true;
+					}
+				}
+				
+				BubbleView bubbleView = new BubbleView(mFrame.getContext(), event.getX(), event.getY());
+				bubbleView.start();
 				mFrame.addView(bubbleView);
 				return true;
 			}
@@ -301,12 +313,11 @@ public class BubbleActivity extends Activity {
 					// move one step. If the BubbleView exits the display, 
 					// stop the BubbleView's Worker Thread. 
 					// Otherwise, request that the BubbleView be redrawn. 
-					
-
-					
-					
-					
-					
+					if (!moveWhileOnScreen()) {
+						postInvalidate();
+					} else {
+						stop(false);
+					}
 				}
 			}, 0, REFRESH_RATE, TimeUnit.MILLISECONDS);
 		}
@@ -314,8 +325,17 @@ public class BubbleActivity extends Activity {
 		private synchronized boolean intersects(float x, float y) {
 
 			// TODO - Return true if the BubbleView intersects position (x,y)
+			float mRadius = mScaledBitmapWidth / 2;
+			float centreX = mXPos + mRadius;
+			float centreY = mYPos + mRadius;
 
-			return false;
+			// get the distance from interect point to the centre of the bubble
+			float xLen = centreX - x;
+			float yLen = centreY - y;
+			float dist = (float)Math.sqrt(xLen * xLen + yLen * yLen);
+
+			// intersects if the dist <= radius
+			return Float.compare(dist, mRadius) <= 0;
 		}
 
 		// Cancel the Bubble's movement
@@ -332,7 +352,7 @@ public class BubbleActivity extends Activity {
 					public void run() {
 						
 						// TODO - Remove the BubbleView from mFrame
-						mFrame.removeView(getCurrentFocus());
+						mFrame.removeView(BubbleView.this);
 
 						
 						
@@ -357,10 +377,8 @@ public class BubbleActivity extends Activity {
 			log("velocity X:" + velocityX + " velocity Y:" + velocityY);
 
 			//TODO - set mDx and mDy to be the new velocities divided by the REFRESH_RATE
-			
-			mDx = 0;
-			mDy = 0;
-
+			mDx = velocityX / REFRESH_RATE;
+			mDy = velocityY / REFRESH_RATE;
 		}
 
 		// Draw the Bubble at its current location
@@ -388,19 +406,16 @@ public class BubbleActivity extends Activity {
 
 			// TODO - Move the BubbleView
 			// Returns true if the BubbleView has exited the screen
-
-
-			
-			
-			return false;
-
+			mXPos += mDx;
+			mYPos += mDy;
+			return isOutOfView();
 		}
 
 		private boolean isOutOfView() {
 
 			// TODO - Return true if the BubbleView has exited the screen
-
-			return false;
+			return mXPos > mDisplayWidth || mXPos + mScaledBitmapWidth < 0 
+					|| mYPos > mDisplayHeight || mYPos + mScaledBitmapWidth < 0;
 
 		}
 	}
